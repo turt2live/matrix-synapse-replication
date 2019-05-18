@@ -175,6 +175,8 @@ namespace Matrix.SynapseInterop.Replication
             var byLine = raw.Split('\n').Where(c => !string.IsNullOrWhiteSpace(c));
 
             foreach (var cmd in byLine)
+            {
+                log.Debug("Received: {0}", cmd);
                 if (cmd.StartsWith("SERVER "))
                 {
                     if (ServerName == null) continue;
@@ -221,6 +223,7 @@ namespace Matrix.SynapseInterop.Replication
                     if (Error == null) continue;
                     Error(this, cmd.Substring("ERROR ".Length));
                 }
+            }
         }
 
         public void SendRaw(string command)
