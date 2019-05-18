@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.421
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Matrix.SynapseInterop.Replication", "Matrix.SynapseInterop.Replication\Matrix.SynapseInterop.Replication.csproj", "{E3F220FE-5CBB-4021-B745-11D71D007F0B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2FAE0E33-62E7-48E4-8541-42DFCB675AA7}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E3F220FE-5CBB-4021-B745-11D71D007F0B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E3F220FE-5CBB-4021-B745-11D71D007F0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E3F220FE-5CBB-4021-B745-11D71D007F0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E3F220FE-5CBB-4021-B745-11D71D007F0B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {43CDF983-2DC2-4EBB-98E9-96F398C3DFB3}
+	EndGlobalSection
+EndGlobal
