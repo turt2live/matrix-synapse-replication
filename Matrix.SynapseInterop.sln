@@ -12,6 +12,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Matrix.SynapseInterop.Replication.Debug", "Matrix.SynapseInterop.Replication.Debug\Matrix.SynapseInterop.Replication.Debug.csproj", "{D2D12D69-E5B7-4974-9259-BA0CEB4FA50D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -22,6 +24,10 @@ Global
 		{E3F220FE-5CBB-4021-B745-11D71D007F0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E3F220FE-5CBB-4021-B745-11D71D007F0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E3F220FE-5CBB-4021-B745-11D71D007F0B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D2D12D69-E5B7-4974-9259-BA0CEB4FA50D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D2D12D69-E5B7-4974-9259-BA0CEB4FA50D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D2D12D69-E5B7-4974-9259-BA0CEB4FA50D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D2D12D69-E5B7-4974-9259-BA0CEB4FA50D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
