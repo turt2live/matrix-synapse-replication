@@ -14,8 +14,15 @@ namespace Matrix.SynapseInterop.Replication.DataRows
             State,
         }
 
+        public enum RowVersion
+        {
+            Pre0994, // <0.99.4
+            Post0994, // >=0.99.4
+        }
+
         // Event + State
         public RowKind Kind { get; private set; }
+        public RowVersion SynapseVersion { get; private set; }
         public string RoomId { get; private set; }
         public string EventId { get; private set; }
         public string EventType { get; private set; }
@@ -35,8 +42,11 @@ namespace Matrix.SynapseInterop.Replication.DataRows
             if (parsed[0] == "ev") kind = RowKind.Event;
             if (parsed[0] == "state") kind = RowKind.State;
 
+            var secondArgType = (parsed[1] as object).GetType().FullName;
+            RowVersion version = secondArgType == typeof(JArray).FullName ? RowVersion.Post0994 : RowVersion.Pre0994;
+
             // We have to convert the JArray to something useful
-            var rowData = ((JArray) parsed[1]).ToObject<List<dynamic>>();
+            var rowData = version == RowVersion.Post0994 ? ((JArray) parsed[1]).ToObject<List<dynamic>>() : new List<dynamic>();
 
             switch (kind)
             {
@@ -44,6 +54,7 @@ namespace Matrix.SynapseInterop.Replication.DataRows
                     return new EventStreamRow
                     {
                         Kind = kind,
+                        SynapseVersion = version,
                         EventId = rowData[0],
                         RoomId = rowData[1],
                         EventType = rowData[2],
@@ -54,13 +65,30 @@ namespace Matrix.SynapseInterop.Replication.DataRows
                     return new EventStreamRow
                     {
                         Kind = kind,
+                        SynapseVersion = version,
                         RoomId = rowData[0],
                         EventType = rowData[1],
                         StateKey = rowData[2],
                         EventId = rowData[3],
                     };
                 default:
-                    return new EventStreamRow {Kind = kind};
+                    if (version == RowVersion.Pre0994)
+                    {
+                        return new EventStreamRow
+                        {
+                            Kind = kind,
+                            SynapseVersion = version,
+                            EventId = parsed[0],
+                            RoomId = parsed[1],
+                            EventType = parsed[2],
+                            StateKey = parsed[3],
+                            RedactsEventId = parsed[4]
+                        };
+                    }
+                    else
+                    {
+                        return new EventStreamRow {Kind = kind, SynapseVersion = version};
+                    }
             }
         }
     }

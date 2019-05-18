@@ -10,7 +10,7 @@
     <projectUrl>https://github.com/turt2live/matrix-synapse-replication/</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
-    <releaseNotes>Initial release</releaseNotes>
+    <releaseNotes>Added Synapse 0.99.4 support</releaseNotes>
     <copyright>Copyright 2019</copyright>
     <tags>matrix synapse replication homeserver stream events matrix.org</tags>
   </metadata>

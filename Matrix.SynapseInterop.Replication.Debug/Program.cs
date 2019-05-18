@@ -42,7 +42,7 @@ namespace Matrix.SynapseInterop.Replication.Debug
 
         private static void Stream_DataRow(object sender, EventStreamRow e)
         {
-            Log.Logger.Information("Received event {0} ({1}) from Synapse", e.EventId, e.Kind);
+            Log.Logger.Information("Received event {0} ({1}, {2}) from Synapse", e.EventId, e.Kind, e.SynapseVersion);
         }
 
         private static void Replication_ServerName(object sender, string e)
