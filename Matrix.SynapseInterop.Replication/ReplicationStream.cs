@@ -36,9 +36,9 @@ namespace Matrix.SynapseInterop.Replication
         private static readonly Dictionary<string, Func<string, IReplicationDataRow>> DATA_ROW_FACTORIES =
             new Dictionary<string, Func<string, IReplicationDataRow>>
             {
-                {ReplicationStreamName.EVENTS, raw => EventStreamRow.FromRaw(raw)},
-                {ReplicationStreamName.FEDERATION_OUTBOUND_QUEUE, raw => FederationStreamRow.FromRaw(raw)},
-                {ReplicationStreamName.RECEIPTS, raw => ReceiptStreamRow.FromRaw(raw)},
+                {ReplicationStreamName.EVENTS, EventStreamRow.FromRaw},
+                {ReplicationStreamName.FEDERATION_OUTBOUND_QUEUE, FederationStreamRow.FromRaw},
+                {ReplicationStreamName.RECEIPTS, ReceiptStreamRow.FromRaw},
             };
 
         private readonly SynapseReplication _replicationHost;
@@ -103,6 +103,12 @@ namespace Matrix.SynapseInterop.Replication
         private void SubscribeToStreams()
         {
             _replicationHost.SubscribeStream(StreamName, CurrentPosition);
+        }
+
+        public void ForcePosition(string newPosition)
+        {
+            CurrentPosition = newPosition;
+            _replicationHost.SubscribeStream(StreamName, newPosition);
         }
     }
 }

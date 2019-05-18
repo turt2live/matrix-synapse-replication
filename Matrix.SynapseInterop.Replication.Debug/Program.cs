@@ -7,6 +7,8 @@ namespace Matrix.SynapseInterop.Replication.Debug
 {
     class Program
     {
+        private static ReplicationStream<EventStreamRow> _stream;
+
         static void Main(string[] args)
         {
             Log.Logger = new LoggerConfiguration()
@@ -33,11 +35,18 @@ namespace Matrix.SynapseInterop.Replication.Debug
             var replication = new SynapseReplication();
             replication.ClientName = "SynapseReplInterop_Debug";
             replication.ServerName += Replication_ServerName;
+            replication.Error += Replication_Error;
 
             await replication.Connect(replicationHost, replicationPort);
 
-            var stream = replication.BindStream<EventStreamRow>();
-            stream.DataRow += Stream_DataRow;
+            _stream = replication.ResumeStream<EventStreamRow>("10");
+            _stream.DataRow += Stream_DataRow;
+        }
+
+        private static void Replication_Error(object sender, string e)
+        {
+            if (e.Contains("stream events has fallen behind"))
+                _stream.ForcePosition(StreamPosition.LATEST);
         }
 
         private static void Stream_DataRow(object sender, EventStreamRow e)
