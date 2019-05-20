@@ -39,19 +39,20 @@ namespace Matrix.SynapseInterop.Replication.Debug
 
             await replication.Connect(replicationHost, replicationPort);
 
-            _stream = replication.ResumeStream<EventStreamRow>("10");
+            _stream = replication.ResumeStream<EventStreamRow>(StreamPosition.LATEST);
             _stream.DataRow += Stream_DataRow;
         }
 
         private static void Replication_Error(object sender, string e)
         {
+            Log.Logger.Error(e);
             if (e.Contains("stream events has fallen behind"))
                 _stream.ForcePosition(StreamPosition.LATEST);
         }
 
         private static void Stream_DataRow(object sender, EventStreamRow e)
         {
-            Log.Logger.Information("Received event {0} ({1}, {2}) from Synapse", e.EventId, e.Kind, e.SynapseVersion);
+            //Log.Logger.Information("Received event {0} ({1}, {2}) from Synapse", e.EventId, e.Kind, e.SynapseVersion);
         }
 
         private static void Replication_ServerName(object sender, string e)

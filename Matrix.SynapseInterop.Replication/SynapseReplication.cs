@@ -138,13 +138,12 @@ namespace Matrix.SynapseInterop.Replication
         {
             try
             {
+                var buf = new byte[1024];
+                var stream = _client.GetStream();
+                var result = new StringBuilder();
+
                 while (_client.Connected)
                 {
-                    var buf = new byte[1024];
-                    var stream = _client.GetStream();
-
-                    var result = new StringBuilder();
-
                     do
                     {
                         var read = stream.Read(buf, 0, buf.Length);
@@ -153,7 +152,8 @@ namespace Matrix.SynapseInterop.Replication
 
                     try
                     {
-                        ProcessCommands(result.ToString());
+                        string unprocessed = ProcessCommands(result.ToString());
+                        result = new StringBuilder(unprocessed);
                     }
                     catch (Exception ex)
                     {
@@ -170,9 +170,16 @@ namespace Matrix.SynapseInterop.Replication
             }
         }
 
-        private void ProcessCommands(string raw)
+        private string ProcessCommands(string raw)
         {
-            var byLine = raw.Split('\n').Where(c => !string.IsNullOrWhiteSpace(c));
+            IEnumerable<string> byLine = raw.Split('\n').Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
+
+            string unprocessed = "";
+            if (!raw.EndsWith('\n'))
+            {
+                unprocessed = byLine.Last();
+                byLine = byLine.Take(byLine.Count() - 1);
+            }
 
             foreach (var cmd in byLine)
             {
@@ -224,6 +231,8 @@ namespace Matrix.SynapseInterop.Replication
                     Error(this, cmd.Substring("ERROR ".Length));
                 }
             }
+
+            return unprocessed;
         }
 
         public void SendRaw(string command)
