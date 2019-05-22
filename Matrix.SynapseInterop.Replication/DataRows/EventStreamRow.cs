@@ -18,6 +18,7 @@ namespace Matrix.SynapseInterop.Replication.DataRows
         {
             Pre0994, // <0.99.4
             Post0994, // >=0.99.4
+            Post0995, // >=0.99.5
         }
 
         // Event + State
@@ -30,6 +31,7 @@ namespace Matrix.SynapseInterop.Replication.DataRows
 
         // Just Events
         public string RedactsEventId { get; private set; } // nullable
+        public string RelatesToEventId { get; private set; } // nullable, 0.99.5+ only
 
         private EventStreamRow() { }
 
@@ -48,6 +50,13 @@ namespace Matrix.SynapseInterop.Replication.DataRows
             // We have to convert the JArray to something useful
             var rowData = version == RowVersion.Post0994 ? ((JArray) parsed[1]).ToObject<List<dynamic>>() : new List<dynamic>();
 
+            string relatesToEventId = null;
+            if (rowData.Count >= 6)
+            {
+                version = RowVersion.Post0995;
+                relatesToEventId = rowData[5];
+            }
+
             switch (kind)
             {
                 case RowKind.Event:
@@ -59,7 +68,8 @@ namespace Matrix.SynapseInterop.Replication.DataRows
                         RoomId = rowData[1],
                         EventType = rowData[2],
                         StateKey = rowData[3],
-                        RedactsEventId = rowData[4]
+                        RedactsEventId = rowData[4],
+                        RelatesToEventId = relatesToEventId,
                     };
                 case RowKind.State:
                     return new EventStreamRow
@@ -82,7 +92,8 @@ namespace Matrix.SynapseInterop.Replication.DataRows
                             RoomId = parsed[1],
                             EventType = parsed[2],
                             StateKey = parsed[3],
-                            RedactsEventId = parsed[4]
+                            RedactsEventId = parsed[4],
+                            RelatesToEventId = relatesToEventId,
                         };
                     }
                     else
