@@ -50,27 +50,33 @@ namespace Matrix.SynapseInterop.Replication
         public string CurrentPosition
         {
             get => _position;
-            private set
+            internal set
             {
                 _position = value;
                 PositionUpdate?.Invoke(this, _position);
             }
         }
 
-        internal ReplicationStream(SynapseReplication replicationHost, string resumeFrom)
+        /// <summary>
+        /// Creates a new replication stream
+        /// </summary>
+        /// <param name="replicationHost">The replication host instance.</param>
+        /// <param name="resumeFrom">DEPRECATED. Modern Synapse versions do not support this feature.</param>
+        internal ReplicationStream(SynapseReplication replicationHost, string resumeFrom = StreamPosition.LATEST)
         {
             _replicationHost = replicationHost;
 
             StreamName = DATA_ROW_STREAM_NAMES[typeof(T)];
             if (string.IsNullOrWhiteSpace(StreamName)) throw new ArgumentException("No stream for data row type");
 
+            if (string.IsNullOrWhiteSpace(resumeFrom)) resumeFrom = StreamPosition.LATEST;
             CurrentPosition = resumeFrom;
 
-            if (string.IsNullOrWhiteSpace(resumeFrom)) resumeFrom = StreamPosition.LATEST;
             _replicationHost.RData += ReplicationHost_RData;
             _replicationHost.PositionUpdate += ReplicationHost_PositionUpdate;
 
             SubscribeToStreams();
+
             _replicationHost.Connected += ReplicationHost_Connected;
         }
 
@@ -102,13 +108,20 @@ namespace Matrix.SynapseInterop.Replication
 
         private void SubscribeToStreams()
         {
+            // Do not try and subscribe if the Synapse version doesn't support it
+            if (_replicationHost.SynapseVersion > SynapseVersion.Pre1130) return;
+
+            // We are knowingly using an Obsolete function here
+#pragma warning disable 618
             _replicationHost.SubscribeStream(StreamName, CurrentPosition);
+#pragma warning restore 618
         }
 
+        [Obsolete("Modern versions of Synapse do not operate in this way anymore")]
         public void ForcePosition(string newPosition)
         {
-            CurrentPosition = newPosition;
             _replicationHost.SubscribeStream(StreamName, newPosition);
+            CurrentPosition = newPosition; // set position after advertising it, just in case of failure
         }
     }
 }

@@ -37,17 +37,16 @@ namespace Matrix.SynapseInterop.Replication.Debug
             replication.ServerName += Replication_ServerName;
             replication.Error += Replication_Error;
 
-            await replication.Connect(replicationHost, replicationPort);
-
-            _stream = replication.ResumeStream<EventStreamRow>(StreamPosition.LATEST);
+            _stream = replication.BindStream<EventStreamRow>();
             _stream.DataRow += Stream_DataRow;
+            _stream.PositionUpdate += Stream_PositionUpdate;
+
+            await replication.Connect(replicationHost, replicationPort);
         }
 
         private static void Replication_Error(object sender, string e)
         {
             Log.Logger.Error(e);
-            if (e.Contains("stream events has fallen behind"))
-                _stream.ForcePosition(StreamPosition.LATEST);
         }
 
         private static void Stream_DataRow(object sender, EventStreamRow e)
@@ -58,6 +57,11 @@ namespace Matrix.SynapseInterop.Replication.Debug
         private static void Replication_ServerName(object sender, string e)
         {
             Log.Logger.Information("Server name is {0}", e);
+        }
+
+        private static void Stream_PositionUpdate(object sender, string position)
+        {
+            Log.Logger.Information("Stream is at position {0}", position);
         }
     }
 }

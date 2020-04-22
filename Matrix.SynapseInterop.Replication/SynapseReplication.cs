@@ -27,6 +27,7 @@ namespace Matrix.SynapseInterop.Replication
         private Timer _pingTimer;
         private bool _reconnectionInProgress = false;
 
+        public SynapseVersion SynapseVersion { get; }
         public string ClientName { get; set; }
 
         public event EventHandler<string> ServerName;
@@ -36,6 +37,11 @@ namespace Matrix.SynapseInterop.Replication
         public event EventHandler<string> Ping;
         public event EventHandler Connected; // Fired for reconnections too
         public event EventHandler<string> RemoteServerUp; // When a process thinks a remote server may be back online
+
+        public SynapseReplication(SynapseVersion estimatedSynapseVersion = SynapseVersion.Post1130)
+        {
+            SynapseVersion = estimatedSynapseVersion;
+        }
 
         public async Task Connect(string address, int port)
         {
@@ -176,7 +182,7 @@ namespace Matrix.SynapseInterop.Replication
             IEnumerable<string> byLine = raw.Split('\n').Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
 
             string unprocessed = "";
-            if (!raw.EndsWith('\n'))
+            if (!raw.EndsWith('\n') && byLine.Any())
             {
                 unprocessed = byLine.Last();
                 byLine = byLine.Take(byLine.Count() - 1);
@@ -187,6 +193,7 @@ namespace Matrix.SynapseInterop.Replication
                 log.Debug("Received: {0}", cmd);
                 if (cmd.StartsWith("SERVER "))
                 {
+                    if (SynapseVersion > SynapseVersion.Pre1130) AcquireStreamPositions();
                     if (ServerName == null) continue;
                     ServerName(this, cmd.Substring("SERVER ".Length));
                 }
@@ -262,9 +269,27 @@ namespace Matrix.SynapseInterop.Replication
             SendRaw("PING " + DateTime.Now.ToBinary());
         }
 
+        [Obsolete("Modern versions of Synapse do not operate in this way anymore")]
         public void SubscribeStream(string streamName, string position)
         {
+            if (SynapseVersion > SynapseVersion.Pre1130)
+            {
+                throw new InvalidOperationException(
+                    "The Synapse version chosen does not operate REPLICATE in this way");
+            }
+
             SendRaw("REPLICATE " + streamName + " " + position);
+        }
+
+        public void AcquireStreamPositions()
+        {
+            if (SynapseVersion < SynapseVersion.Post1130)
+            {
+                throw new InvalidOperationException(
+                    "The Synapse version chosen does not operate REPLICATE in this way");
+            }
+
+            SendRaw("REPLICATE "); // The space is required: https://github.com/matrix-org/synapse/pull/7323
         }
 
         public void SendFederationAck(string token)
@@ -279,15 +304,17 @@ namespace Matrix.SynapseInterop.Replication
 
         public ReplicationStream<T> BindStream<T>() where T : IReplicationDataRow
         {
-            if (!_streams.ContainsKey(typeof(T))) ResumeStream<T>(StreamPosition.LATEST);
+            if (_streams.ContainsKey(typeof(T))) throw new ArgumentException("A stream has already been started");
+            if (!_streams.ContainsKey(typeof(T))) _streams.Add(typeof(T), new ReplicationStream<T>(this));
             return (ReplicationStream<T>) _streams[typeof(T)];
         }
 
+        [Obsolete("Modern versions of Synapse do not operate in this way anymore")]
         public ReplicationStream<T> ResumeStream<T>(string fromPosition) where T : IReplicationDataRow
         {
-            if (_streams.ContainsKey(typeof(T))) throw new ArgumentException("A stream has already been started");
-            _streams.Add(typeof(T), new ReplicationStream<T>(this, fromPosition));
-            return (ReplicationStream<T>) _streams[typeof(T)];
+            var stream = BindStream<T>();
+            stream.CurrentPosition = fromPosition;
+            return stream;
         }
     }
 }
