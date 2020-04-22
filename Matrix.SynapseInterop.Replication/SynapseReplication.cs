@@ -35,6 +35,7 @@ namespace Matrix.SynapseInterop.Replication
         public event EventHandler<string> Error;
         public event EventHandler<string> Ping;
         public event EventHandler Connected; // Fired for reconnections too
+        public event EventHandler<string> RemoteServerUp; // When a process thinks a remote server may be back online
 
         public async Task Connect(string address, int port)
         {
@@ -220,6 +221,11 @@ namespace Matrix.SynapseInterop.Replication
 
                     PositionUpdate(this, new StreamPosition {StreamName = stream, Position = position});
                 }
+                else if (cmd.StartsWith("REMOTE_SERVER_UP "))
+                {
+                    if (RemoteServerUp == null) continue;
+                    RemoteServerUp(this, cmd.Substring("REMOTE_SERVER_UP ".Length));
+                }
                 else if (cmd.StartsWith("PING "))
                 {
                     if (Ping == null) continue;
@@ -264,6 +270,11 @@ namespace Matrix.SynapseInterop.Replication
         public void SendFederationAck(string token)
         {
             SendRaw($"FEDERATION_ACK {token}");
+        }
+
+        public void SendRemoteServerUp(string serverName)
+        {
+            SendRaw($"REMOTE_SERVER_UP {serverName}");
         }
 
         public ReplicationStream<T> BindStream<T>() where T : IReplicationDataRow
