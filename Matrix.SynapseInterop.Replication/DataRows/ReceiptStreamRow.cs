@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -10,6 +11,8 @@ namespace Matrix.SynapseInterop.Replication.DataRows
         public string RoomId { get; private set; }
         public string UserId { get; private set; }
         public JObject Data { get; private set; }
+        public string ReceiptType { get; private set; }
+        [Obsolete("Spelling error - please use ReceiptType instead")]
         public string RecieptType { get; private set; }
         private ReceiptStreamRow() { }
 
@@ -20,6 +23,7 @@ namespace Matrix.SynapseInterop.Replication.DataRows
             return new ReceiptStreamRow
             {
                 RoomId = parsed[0],
+                ReceiptType = parsed[1],
                 RecieptType = parsed[1],
                 UserId = parsed[2],
                 EventId = parsed[3],
