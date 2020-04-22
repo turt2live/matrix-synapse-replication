@@ -6,7 +6,10 @@ namespace Matrix.SynapseInterop.Replication
 {
     public class ReplicationStreamName
     {
+        [Obsolete("Appears to no longer be in use by Synapse")]
+        public static readonly string CURRENT_STATE_DELTAS = "current_state_deltas";
         public static readonly string EVENTS = "events";
+        public static readonly string FEDERATION_OUTBOUND_QUEUE = "federation";
         public static readonly string BACKFILL = "backfill";
         public static readonly string PRESENCE = "presence";
         public static readonly string TYPING = "typing";
@@ -17,11 +20,10 @@ namespace Matrix.SynapseInterop.Replication
         public static readonly string PUBLIC_ROOMS = "public_rooms";
         public static readonly string DEVICE_LISTS = "device_lists";
         public static readonly string TO_DEVICE = "to_device";
-        public static readonly string FEDERATION_OUTBOUND_QUEUE = "federation";
         public static readonly string TAG_ACCOUNT_DATA = "tag_account_data";
         public static readonly string ACCOUNT_DATA = "account_data";
-        public static readonly string CURRENT_STATE_DELTAS = "current_state_deltas";
         public static readonly string GROUPS = "groups";
+        public static readonly string USER_SIGNATURES = "user_signature";
     }
 
     public class ReplicationStream<T> where T : IReplicationDataRow
