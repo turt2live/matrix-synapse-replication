@@ -1,10 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Matrix.SynapseInterop.Replication.DataRows;
 using Serilog;
@@ -13,6 +9,24 @@ namespace Matrix.SynapseInterop.Replication
 {
     public class SynapseReplication
     {
+        internal class ReplicationProcessor : ICommandProcessor
+        {
+            Func<string, string> f;
+            bool newlines;
+
+            internal ReplicationProcessor(Func<string, string> process, bool appendNewline = false)
+            {
+                f = process;
+                newlines = appendNewline;
+            }
+
+            public string ProcessCommands(string raw)
+            {
+                if (newlines) raw = raw + "\n";
+                return f(raw);
+            }
+        }
+
         private static readonly ILogger log = Log.ForContext<SynapseReplication>();
 
         private readonly Dictionary<string, ReplicationData>
@@ -21,11 +35,7 @@ namespace Matrix.SynapseInterop.Replication
         private readonly Dictionary<Type, object>
             _streams = new Dictionary<Type, object>(); // object is a ReplicationStream<T>. TODO: Don't do this.
 
-        private TcpClient _client;
-        private string _lastAddress;
-        private int _lastPort;
-        private Timer _pingTimer;
-        private bool _reconnectionInProgress = false;
+        private IReplicationBackend _connection;
 
         public SynapseVersion SynapseVersion { get; }
         public string ClientName { get; set; }
@@ -43,138 +53,59 @@ namespace Matrix.SynapseInterop.Replication
             SynapseVersion = estimatedSynapseVersion;
         }
 
+        [Obsolete("Use ConnectTcp() instead")]
         public async Task Connect(string address, int port)
         {
-            _lastAddress = address;
-            _lastPort = port;
-
-            await Reconnect(true);
+            await ConnectTcp(address, port);
         }
 
-        public void Disconnect()
+        public async Task ConnectTcp(string address, int port)
         {
-            _client?.Close();
+            _connection?.Disconnect();
+            var conn = new SynapseTcpReplication(this.ClientName);
+            _connection = conn;
+            conn.CommandProcessor = new ReplicationProcessor(this.ProcessCommands);
+            conn.Disconnected += Conn_Disconnected;
+            conn.Connected += Conn_Connected;
+            await conn.Connect(address, port);
+        }
 
-            // Stop the timer - we'll create a new one if we need to
-            _pingTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+        private void Conn_Connected(object sender, EventArgs e)
+        {
+            Connected?.Invoke(this, null);
+        }
 
-            _pendingBatches.Clear();
+        private void Conn_Disconnected(object sender, EventArgs e)
+        {
+            if (sender == _connection)
+            {
+                _pendingBatches.Clear();
+            }
+        }
+
+        public async Task ConnectRedis(string address, int port, string hostname)
+        {
+            _connection?.Disconnect();
+            var conn = new SynapseRedisReplication(this.ClientName, hostname);
+            _connection = conn;
+            conn.CommandProcessor = new ReplicationProcessor(this.ProcessCommands, true);
+            conn.Connected += Conn_Connected;
+            await conn.Connect(address, port);
         }
 
         public async Task Reconnect(bool firstAttempt = false)
         {
-            if (!firstAttempt) log.Information("Lost replication connection - reconnecting");
-
-            Disconnect();
-
-            // Resolve the address
-            var dns = await Dns.GetHostEntryAsync(_lastAddress);
-            IPAddress ip;
-
-            try
-            {
-                // TcpClient doesn't support IPV6 :(
-                ip = dns.AddressList.First(i => i.AddressFamily == AddressFamily.InterNetwork);
-            }
-            catch (InvalidOperationException ex)
-            {
-                throw new InvalidOperationException($"No IPv4 address found for {_lastAddress}", ex);
-            }
-
-            // Form a connection
-            _client = new TcpClient();
-            log.Information("Connecting to replication stream on {ip}:{_lastPort}", ip, _lastPort);
-            await _client.ConnectAsync(ip, _lastPort);
-
-            // Name our client
-            var name = string.IsNullOrWhiteSpace(ClientName) ? "NETCORESynapseReplication" : ClientName;
-            SendRaw("NAME " + name);
-
-            // Start pinging 
-            _pingTimer = new Timer(context =>
-            {
-                try
-                {
-                    SendPing(context);
-                }
-                catch (Exception ex)
-                {
-                    log.Error("Ping failed: {ex}", ex);
-                }
-            }, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
-
-            // Start the reader
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            Task.Run(() => ReadLoop());
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-
-            Connected?.Invoke(this, null);
+            await _connection.Reconnect();
         }
 
-        private async void ReconnectLoop()
+        public void Disconnect()
         {
-            if (_reconnectionInProgress)
-            {
-                // Do not try to run ReconnectLoop concurrently.
-                return;
-            }
-
-            _reconnectionInProgress = true;
-            var attempt = 1;
-
-            while (true)
-            {
-                log.Information($"Reconnecting to replication: Attempt {attempt++}");
-
-                try
-                {
-                    await Reconnect();
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    log.Error($"Reconnection failed: {ex}");
-                    await Task.Delay(TimeSpan.FromSeconds(5));
-                }
-            }
-
-            _reconnectionInProgress = false;
+            _connection.Disconnect();
         }
 
-        private async void ReadLoop()
+        public void SendRaw(string command)
         {
-            try
-            {
-                var buf = new byte[1024];
-                var stream = _client.GetStream();
-                var result = new StringBuilder();
-
-                while (_client.Connected)
-                {
-                    do
-                    {
-                        var read = stream.Read(buf, 0, buf.Length);
-                        result.Append(Encoding.UTF8.GetString(buf, 0, read));
-                    } while (stream.DataAvailable);
-
-                    try
-                    {
-                        string unprocessed = ProcessCommands(result.ToString());
-                        result = new StringBuilder(unprocessed);
-                    }
-                    catch (Exception ex)
-                    {
-                        log.Error("Failed to process command: {0}", ex);
-                        SendRaw("ERROR Error processing incoming commands");
-                        await Reconnect();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                log.Error("Failed to read from replication: {0}", ex);
-                ReconnectLoop();
-            }
+            _connection.SendRaw(command);
         }
 
         private string ProcessCommands(string raw)
@@ -246,27 +177,6 @@ namespace Matrix.SynapseInterop.Replication
             }
 
             return unprocessed;
-        }
-
-        public void SendRaw(string command)
-        {
-            var shortCommand = command.Length > 80 ? command.Substring(0, 80) : command;
-            log.Debug($"Sending {shortCommand}");
-
-            try
-            {
-                _client.Client.Send(Encoding.UTF8.GetBytes(command + "\n"));
-            }
-            catch (Exception ex)
-            {
-                ReconnectLoop();
-                throw new Exception("Failed to send command to Synapse", ex);
-            }
-        }
-
-        private void SendPing(object context)
-        {
-            SendRaw("PING " + DateTime.Now.ToBinary());
         }
 
         [Obsolete("Modern versions of Synapse do not operate in this way anymore")]

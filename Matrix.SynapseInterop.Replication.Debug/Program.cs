@@ -22,15 +22,21 @@ namespace Matrix.SynapseInterop.Replication.Debug
 
             string replicationHost = Environment.GetEnvironmentVariable("Synapse__replicationHost");
             string replicationPort = Environment.GetEnvironmentVariable("Synapse__replicationPort");
+            string serverHostname = Environment.GetEnvironmentVariable("Synapse__hostname");
+            bool useRedis = Environment.GetEnvironmentVariable("Synapse__redis") == "true";
 
             if (string.IsNullOrWhiteSpace(replicationHost)) replicationHost = "localhost";
-            if (string.IsNullOrWhiteSpace(replicationPort)) replicationPort = "9092";
+            if (string.IsNullOrWhiteSpace(replicationPort))
+            {
+                replicationPort = useRedis ? "6379" : "9092";
+            }
+            if (string.IsNullOrWhiteSpace(serverHostname)) serverHostname = "localhost";
 
-            StartReplicationAsync(replicationHost, int.Parse(replicationPort));
+            StartReplicationAsync(replicationHost, int.Parse(replicationPort), useRedis, serverHostname);
             Console.ReadKey(true);
         }
 
-        private static async void StartReplicationAsync(string replicationHost, int replicationPort)
+        private static async void StartReplicationAsync(string replicationHost, int replicationPort, bool useRedis, string serverHostname)
         {
             var replication = new SynapseReplication();
             replication.ClientName = "SynapseReplInterop_Debug";
@@ -41,7 +47,14 @@ namespace Matrix.SynapseInterop.Replication.Debug
             _stream.DataRow += Stream_DataRow;
             _stream.PositionUpdate += Stream_PositionUpdate;
 
-            await replication.Connect(replicationHost, replicationPort);
+            if (!useRedis)
+            {
+                await replication.ConnectTcp(replicationHost, replicationPort);
+            }
+            else
+            {
+                await replication.ConnectRedis(replicationHost, replicationPort, serverHostname);
+            }
         }
 
         private static void Replication_Error(object sender, string e)
