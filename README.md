@@ -11,7 +11,7 @@ TODO: Documentation on how to use this thing.
 | 0.2.x           | 0.99.3, 0.99.4   |
 | 0.2.4           | 0.99.3, 0.99.4, 0.99.5   |
 | 0.3.x           | 1.12.3           |
-| 0.4.x           | 1.19.1 (redis only) |
+| 0.4.x (TBD)     | 1.19.1           |
 
 **Check the project's README on Github for an up to date list.**
 
