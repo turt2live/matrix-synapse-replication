@@ -48,7 +48,7 @@ namespace Matrix.SynapseInterop.Replication
         public event EventHandler Connected; // Fired for reconnections too
         public event EventHandler<string> RemoteServerUp; // When a process thinks a remote server may be back online
 
-        public SynapseReplication(SynapseVersion estimatedSynapseVersion = SynapseVersion.Post1130)
+        public SynapseReplication(SynapseVersion estimatedSynapseVersion = SynapseVersion.Post1191)
         {
             SynapseVersion = estimatedSynapseVersion;
         }
@@ -132,11 +132,22 @@ namespace Matrix.SynapseInterop.Replication
                 {
                     if (RData == null) continue;
                     var row = cmd.Substring("RDATA ".Length);
-                    var rowParts = row.Split(new[] {' '}, 3);
+                    var rowParts = row.Split(new[] {' '}, (SynapseVersion >= SynapseVersion.Post1191 ? 4 : 3));
 
                     var stream = rowParts[0];
                     var position = rowParts[1];
                     var rowData = rowParts[2];
+                    
+                    if (SynapseVersion >= SynapseVersion.Post1191)
+                    {
+                        position = rowParts[2];
+                        rowData = rowParts[3];
+                        if (rowParts[1] != "master")
+                        {
+                            log.Warning($"Received unsupported RDATA from unknown location: {cmd}");
+                            continue;
+                        }
+                    }
 
                     if (!_pendingBatches.ContainsKey(stream)) _pendingBatches.Add(stream, new ReplicationData(stream));
                     _pendingBatches[stream].AppendRow(rowData);
